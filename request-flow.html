@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能客服多Agent系统 - 请求处理流程</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .step-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .step-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .mermaid-container {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- 头部 -->
+        <div class="card mb-8 p-6 text-center">
+            <h1 class="text-4xl font-bold text-indigo-700 mb-2">智能客服多Agent系统</h1>
+            <p class="text-xl text-gray-600">请求处理流程详解</p>
+        </div>
+        
+        <!-- 架构图 -->
+        <div class="card mb-8 p-6">
+            <h2 class="text-2xl font-bold text-indigo-600 mb-4 flex items-center">
+                <i class="fa fa-sitemap mr-2"></i>系统架构
+            </h2>
+            <div class="mermaid-container">
+                <pre class="mermaid">
+flowchart TD
+    subgraph API层
+        A[FastAPI接口]
+        B[RESTful API]
+        C[流式响应]
+        D[工具调用]
+    end
+    
+    subgraph 协调层
+        E[Supervisor中央协调者]
+        F[路由决策]
+        G[结果汇总]
+    end
+    
+    subgraph 功能层
+        H[IntentRouter
+意图识别与分类]
+        I[KnowledgeRAG
+知识库检索与回答]
+        J[TicketHandler
+工单创建与查询]
+        K[ComplianceChecker
+合规审查与敏感词检测]
+    end
+    
+    subgraph 记忆系统
+        L[WorkingMemory
+工作记忆]
+        M[ShortTermMemory
+短期记忆Redis]
+        N[LongTermMemory
+长期记忆FAISS]
+    end
+    
+    A --> E
+    E --> H
+    H --> F
+    F --> I
+    F --> J
+    F --> K
+    I --> L
+    J --> L
+    K --> L
+    L --> M
+    I --> N
+    L --> G
+    G --> A
+                </pre>
+            </div>
+        </div>
+        
+        <!-- 详细流程 -->
+        <div class="card mb-8 p-6">
+            <h2 class="text-2xl font-bold text-indigo-600 mb-6 flex items-center">
+                <i class="fa fa-road mr-2"></i>请求处理详细流程
+            </h2>
+            
+            <div class="mermaid-container mb-8">
+                <pre class="mermaid">
+sequenceDiagram
+    participant User as 用户
+    participant API as API层
+    participant Supervisor as Supervisor
+    participant Intent as IntentRouter
+    participant Agent as 子Agent
+    participant Memory as 记忆系统
+    participant Compliance as 合规审查
+    
+    User->>API: 发送消息
+    API->>Memory: 存储用户消息
+    API->>Supervisor: 转发请求
+    Supervisor->>Intent: 意图识别
+    Intent-->>Supervisor: 返回意图分类
+    Supervisor->>Agent: 路由到对应Agent
+    
+    alt 知识检索
+        Agent->>Memory: 查询长期记忆
+        Memory-->>Agent: 返回相关文档
+        Agent->>Agent: 生成回答
+    else 工单处理
+        Agent->>Agent: 处理工单
+    else 其他任务
+        Agent->>Agent: 处理任务
+    end
+    
+    Agent-->>Supervisor: 返回处理结果
+    Supervisor->>Compliance: 合规审查
+    Compliance-->>Supervisor: 审查结果
+    Supervisor->>Memory: 存储对话历史
+    Supervisor-->>API: 汇总最终结果
+    API-->>User: 返回响应
+                </pre>
+            </div>
+            
+            <!-- 步骤说明 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- 步骤1 -->
+                <div class="step-card card p-4">
+                    <div class="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center mb-3">1</div>
+                    <h3 class="text-lg font-semibold text-indigo-700 mb-2">接收请求</h3>
+                    <p class="text-gray-600">FastAPI接口接收用户消息，存储到短期记忆，转发给Supervisor</p>
+                </div>
+                
+                <!-- 步骤2 -->
+                <div class="step-card card p-4">
+                    <div class="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center mb-3">2</div>
+                    <h3 class="text-lg font-semibold text-indigo-700 mb-2">意图识别</h3>
+                    <p class="text-gray-600">IntentRouter分析用户意图，进行一级和二级分类，提取关键实体</p>
+                </div>
+                
+                <!-- 步骤3 -->
+                <div class="step-card card p-4">
+                    <div class="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center mb-3">3</div>
+                    <h3 class="text-lg font-semibold text-indigo-700 mb-2">智能路由</h3>
+                    <p class="text-gray-600">Supervisor根据意图类型，将请求路由到对应的子Agent</p>
+                </div>
+                
+                <!-- 步骤4 -->
+                <div class="step-card card p-4">
+                    <div class="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center mb-3">4</div>
+                    <h3 class="text-lg font-semibold text-indigo-700 mb-2">Agent处理</h3>
+                    <p class="text-gray-600">子Agent处理具体任务：知识检索、工单处理、合规审查等</p>
+                </div>
+                
+                <!-- 步骤5 -->
+                <div class="step-card card p-4">
+                    <div class="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center mb-3">5</div>
+                    <h3 class="text-lg font-semibold text-indigo-700 mb-2">合规审查</h3>
+                    <p class="text-gray-600">两阶段审查：规则引擎快速检查 + LLM深度审查</p>
+                </div>
+                
+                <!-- 步骤6 -->
+                <div class="step-card card p-4">
+                    <div class="bg-indigo-100 text-indigo-800 font-bold rounded-full w-8 h-8 flex items-center justify-center mb-3">6</div>
+                    <h3 class="text-lg font-semibold text-indigo-700 mb-2">结果返回</h3>
+                    <p class="text-gray-600">Supervisor汇总结果，存储到记忆系统，返回给用户</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 技术亮点 -->
+        <div class="card mb-8 p-6">
+            <h2 class="text-2xl font-bold text-indigo-600 mb-4 flex items-center">
+                <i class="fa fa-lightbulb-o mr-2"></i>技术亮点
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-indigo-700 mb-2">多Agent协作</h3>
+                    <p class="text-gray-600">Supervisor编排多个专业Agent，实现任务的智能分配和协作</p>
+                </div>
+                <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-indigo-700 mb-2">三级记忆系统</h3>
+                    <p class="text-gray-600">工作记忆 + 短期记忆(Redis) + 长期记忆(FAISS)，提供完整的记忆能力</p>
+                </div>
+                <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-indigo-700 mb-2">端到端RAG流程</h3>
+                    <p class="text-gray-600">Query改写 → 向量检索 → 重排序 → 上下文注入 → 生成回答</p>
+                </div>
+                <div class="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-indigo-700 mb-2">金融级合规</h3>
+                    <p class="text-gray-600">两阶段审查(规则引擎 + LLM深度审查)，确保回答符合监管要求</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 系统组件 -->
+        <div class="card p-6">
+            <h2 class="text-2xl font-bold text-indigo-600 mb-4 flex items-center">
+                <i class="fa fa-cogs mr-2"></i>核心组件
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg overflow-hidden">
+                    <thead class="bg-indigo-100">
+                        <tr>
+                            <th class="py-3 px-4 text-left text-indigo-800 font-semibold">组件名称</th>
+                            <th class="py-3 px-4 text-left text-indigo-800 font-semibold">主要功能</th>
+                            <th class="py-3 px-4 text-left text-indigo-800 font-semibold">技术实现</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b">
+                            <td class="py-3 px-4 font-medium">Supervisor</td>
+                            <td class="py-3 px-4">中央协调者，负责意图路由和结果汇总</td>
+                            <td class="py-3 px-4">LangGraph StateGraph</td>
+                        </tr>
+                        <tr class="border-b">
+                            <td class="py-3 px-4 font-medium">IntentRouter</td>
+                            <td class="py-3 px-4">意图识别与分类，实体提取</td>
+                            <td class="py-3 px-4">LLM + 规则引擎</td>
+                        </tr>
+                        <tr class="border-b">
+                            <td class="py-3 px-4 font-medium">KnowledgeRAG</td>
+                            <td class="py-3 px-4">知识库检索与回答生成</td>
+                            <td class="py-3 px-4">FAISS + LangChain</td>
+                        </tr>
+                        <tr class="border-b">
+                            <td class="py-3 px-4 font-medium">TicketHandler</td>
+                            <td class="py-3 px-4">工单创建与查询，状态管理</td>
+                            <td class="py-3 px-4">内存存储 + 优先级算法</td>
+                        </tr>
+                        <tr class="border-b">
+                            <td class="py-3 px-4 font-medium">ComplianceChecker</td>
+                            <td class="py-3 px-4">合规审查，敏感词检测，PII脱敏</td>
+                            <td class="py-3 px-4">规则引擎 + LLM深度审查</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 px-4 font-medium">Memory System</td>
+                            <td class="py-3 px-4">三级记忆管理</td>
+                            <td class="py-3 px-4">进程内 + Redis + FAISS</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 页脚 -->
+        <div class="text-center text-white mt-8">
+            <p>智能客服多Agent系统 © 2026</p>
+        </div>
+    </div>
+    
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                curve: 'linear'
+            }
+        });
+    </script>
+</body>
+</html>

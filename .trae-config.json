@@ -1,0 +1,6 @@
+{
+  "agent_spec": "AGENT.md",
+  "priority": "high",
+  "auto_apply": true,
+  "version": "1.0.0"
+}
